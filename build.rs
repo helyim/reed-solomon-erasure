@@ -17,7 +17,7 @@ fn gen_log_table(polynomial: usize) -> [u8; FIELD_SIZE] {
     for log in 0..FIELD_SIZE - 1 {
         result[b] = log as u8;
 
-        b = b << 1;
+        b <<= 1;
 
         if FIELD_SIZE <= b {
             b = (b - FIELD_SIZE) ^ polynomial;
@@ -32,8 +32,8 @@ const EXP_TABLE_SIZE: usize = FIELD_SIZE * 2 - 2;
 fn gen_exp_table(log_table: &[u8; FIELD_SIZE]) -> [u8; EXP_TABLE_SIZE] {
     let mut result: [u8; EXP_TABLE_SIZE] = [0; EXP_TABLE_SIZE];
 
-    for i in 1..FIELD_SIZE {
-        let log = log_table[i] as usize;
+    for (i, log) in log_table.iter().enumerate().take(FIELD_SIZE).skip(1) {
+        let log = *log as usize;
         result[log] = i as u8;
         result[log + FIELD_SIZE - 1] = i as u8;
     }
@@ -58,9 +58,9 @@ fn gen_mul_table(
 ) -> [[u8; FIELD_SIZE]; FIELD_SIZE] {
     let mut result: [[u8; FIELD_SIZE]; FIELD_SIZE] = [[0; 256]; 256];
 
-    for a in 0..FIELD_SIZE {
-        for b in 0..FIELD_SIZE {
-            result[a][b] = multiply(log_table, exp_table, a as u8, b as u8);
+    for (a, result_a) in result.iter_mut().enumerate().take(FIELD_SIZE) {
+        for (b, result_b) in result_a.iter_mut().enumerate().take(FIELD_SIZE) {
+            *result_b = multiply(log_table, exp_table, a as u8, b as u8);
         }
     }
 
@@ -137,7 +137,7 @@ fn write_tables() {
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let dest_path = Path::new(&out_dir).join("table.rs");
-    let mut f = File::create(&dest_path).unwrap();
+    let mut f = File::create(dest_path).unwrap();
 
     write_table!(1D => f, log_table,      "LOG_TABLE",      "u8");
     write_table!(1D => f, exp_table,      "EXP_TABLE",      "u8");
@@ -169,9 +169,11 @@ fn compile_simd_c() {
         Err(_error) => {
             // On x86-64 enabling Haswell architecture unlocks useful instructions and improves performance
             // dramatically while allowing it to run ony modern CPU.
-            match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str(){
-                "x86_64"  => { build.flag(&"-march=haswell"); },
-                _         => ()
+            match env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
+                "x86_64" => {
+                    build.flag(&"-march=haswell");
+                }
+                _ => (),
             }
         }
     }
