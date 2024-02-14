@@ -321,7 +321,7 @@ mod tests {
     use quickcheck::Arbitrary;
 
     impl Arbitrary for Element {
-        fn arbitrary<G: quickcheck::Gen>(gen: &mut G) -> Self {
+        fn arbitrary(gen: &mut quickcheck::Gen) -> Self {
             let a = u8::arbitrary(gen);
             let b = u8::arbitrary(gen);
 

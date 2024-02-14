@@ -70,8 +70,8 @@ fn shards_into_option_shards<T>(shards: Vec<Vec<T>>) -> Vec<Option<Vec<T>>> {
 fn option_shards_to_shards<T: Clone>(shards: &[Option<Vec<T>>]) -> Vec<Vec<T>> {
     let mut result = Vec::with_capacity(shards.len());
 
-    for i in 0..shards.len() {
-        let shard = match shards[i] {
+    for (i, shard) in shards.iter().enumerate() {
+        let shard = match shard {
             Some(ref x) => x,
             None => panic!("Missing shard, index : {}", i),
         };
@@ -119,8 +119,8 @@ fn test_too_many_shards() {
 fn test_shard_count() {
     let mut rng = thread_rng();
     for _ in 0..10 {
-        let data_shard_count = rng.gen_range(1, 128);
-        let parity_shard_count = rng.gen_range(1, 128);
+        let data_shard_count = rng.gen_range(1..128);
+        let parity_shard_count = rng.gen_range(1..128);
 
         let total_shard_count = data_shard_count + parity_shard_count;
 
@@ -157,7 +157,7 @@ fn test_encoding() {
     );
 
     let mut bad_shards = make_random_shards!(per_shard, 13);
-    bad_shards[0] = vec![0 as u8];
+    bad_shards[0] = vec![0u8];
     assert_eq!(
         Error::IncorrectShardSize,
         r.encode(&mut bad_shards).unwrap_err()
@@ -369,7 +369,7 @@ quickcheck! {
         for _ in 0..corrupt {
             let mut pos = rand::random::<usize>() % (data + parity);
 
-            while let Some(_) = corrupt_pos_s.iter().find(|&&x| x == pos) {
+            while corrupt_pos_s.iter().any(|&x| x == pos) {
                 pos = rand::random::<usize>() % (data + parity);
             }
 
@@ -444,7 +444,7 @@ quickcheck! {
         for _ in 0..corrupt {
             let mut pos = rand::random::<usize>() % (data + parity);
 
-            while let Some(_) = corrupt_pos_s.iter().find(|&&x| x == pos) {
+            while corrupt_pos_s.iter().any(|&x| x == pos) {
                 pos = rand::random::<usize>() % (data + parity);
             }
 
@@ -493,7 +493,7 @@ quickcheck! {
         for _ in 0..corrupt {
             let mut pos = rand::random::<usize>() % (data + parity);
 
-            while let Some(_) = corrupt_pos_s.iter().find(|&&x| x == pos) {
+            while corrupt_pos_s.iter().any(|&x| x == pos) {
                 pos = rand::random::<usize>() % (data + parity);
             }
 
@@ -556,7 +556,7 @@ quickcheck! {
         for _ in 0..corrupt {
             let mut pos = rand::random::<usize>() % (data + parity);
 
-            while let Some(_) = corrupt_pos_s.iter().find(|&&x| x == pos) {
+            while corrupt_pos_s.iter().any(|&x| x == pos) {
                 pos = rand::random::<usize>() % (data + parity);
             }
 
@@ -763,8 +763,8 @@ quickcheck! {
             let mut parity_refs =
                 convert_2D_slices!(parity_shards =>to_mut_vec &mut [u8]);
 
-            for i in 0..data {
-                r.encode_single_sep(i, data_refs[i], &mut parity_refs).unwrap();
+            for (i, data_ref) in data_refs.iter().enumerate().take(data) {
+                r.encode_single_sep(i, data_ref, &mut parity_refs).unwrap();
             }
         }
 
@@ -796,8 +796,8 @@ quickcheck! {
         {
             let (data_shards, parity_shards) = shards.split_at_mut(data);
 
-            for i in 0..data {
-                r.encode_single_sep(i, &data_shards[i], parity_shards).unwrap();
+            for (i, data_shard) in  data_shards.iter().enumerate().take(data) {
+                r.encode_single_sep(i, data_shard, parity_shards).unwrap();
             }
         }
 
@@ -935,7 +935,7 @@ fn test_verify_shards_with_buffer_incorrect_buffer_sizes() {
 
         let mut buffer = vec![vec![0; 100]; 2];
 
-        assert_eq!(true, r.verify_with_buffer(&shards, &mut buffer).unwrap());
+        assert!(r.verify_with_buffer(&shards, &mut buffer).unwrap());
     }
     {
         // Test having first buffer being empty
@@ -999,7 +999,7 @@ fn test_verify_with_buffer_gives_correct_parity_shards() {
         for slice in slices.iter_mut() {
             fill_random(slice);
         }
-        let slices_copy = slices.clone();
+        let slices_copy = slices;
 
         {
             let mut slice_refs = convert_2D_slices!(slices=>to_mut_vec &mut [u8]);
@@ -1195,7 +1195,7 @@ fn shardbyshard_encode_correctly() {
         for slice in slices.iter_mut() {
             fill_random(slice);
         }
-        let mut slices_copy = slices.clone();
+        let mut slices_copy = slices;
 
         {
             let mut slice_refs = convert_2D_slices!(slices=>to_mut_vec &mut [u8]);
@@ -1352,7 +1352,7 @@ fn shardbyshard_encode_sep_correctly() {
         for slice in slices.iter_mut() {
             fill_random(slice);
         }
-        let mut slices_copy = slices.clone();
+        let mut slices_copy = slices;
 
         {
             let (data, parity) = slices.split_at_mut(10);
@@ -1552,9 +1552,9 @@ fn shardbyshard_encode_correctly_more_rigorous() {
             for i in 0..10 {
                 assert_eq!(i, sbs.cur_input_index());
 
-                slice_copy_refs[i].clone_from_slice(&slice_refs[i]);
+                slice_copy_refs[i].clone_from_slice(slice_refs[i]);
                 sbs.encode(&mut slice_copy_refs).unwrap();
-                fill_random(&mut slice_copy_refs[i]);
+                fill_random(slice_copy_refs[i]);
             }
         }
 
@@ -2214,8 +2214,8 @@ fn test_encode_single_sep() {
         {
             let (data, parity) = shards_copy.split_at_mut(10);
 
-            for i in 0..10 {
-                r.encode_single_sep(i, &data[i], parity).unwrap();
+            for (i, data) in data.iter().enumerate().take(10) {
+                r.encode_single_sep(i, data, parity).unwrap();
             }
         }
         assert!(r.verify(&shards).unwrap());
@@ -2228,7 +2228,7 @@ fn test_encode_single_sep() {
         for slice in slices.iter_mut() {
             fill_random(slice);
         }
-        let mut slices_copy = slices.clone();
+        let mut slices_copy = slices;
 
         {
             let mut slice_refs = convert_2D_slices!(slices=>to_mut_vec &mut [u8]);
@@ -2240,8 +2240,8 @@ fn test_encode_single_sep() {
 
             r.encode(&mut slice_refs).unwrap();
 
-            for i in 0..10 {
-                r.encode_single_sep(i, &data_copy_refs[i], &mut parity_copy_refs)
+            for (i, data_copy_ref) in data_copy_refs.iter().enumerate().take(10) {
+                r.encode_single_sep(i, data_copy_ref, &mut parity_copy_refs)
                     .unwrap();
             }
         }
@@ -2277,7 +2277,7 @@ fn test_encode_sep() {
         for slice in slices.iter_mut() {
             fill_random(slice);
         }
-        let mut slices_copy = slices.clone();
+        let mut slices_copy = slices;
 
         {
             let (data_copy, parity_copy) = slices_copy.split_at_mut(10);
@@ -2310,8 +2310,8 @@ fn test_encode_single_sep_error_handling() {
         {
             let (data, parity) = shards.split_at_mut(10);
 
-            for i in 0..10 {
-                r.encode_single_sep(i, &data[i], parity).unwrap();
+            for (i, data) in data.iter().enumerate().take(10) {
+                r.encode_single_sep(i, data, parity).unwrap();
             }
 
             assert_eq!(
@@ -2365,34 +2365,33 @@ fn test_encode_single_sep_error_handling() {
             let data_refs = convert_2D_slices!(data=>to_mut_vec &[u8]);
             let mut parity_refs = convert_2D_slices!(parity=>to_mut_vec &mut [u8]);
 
-            for i in 0..10 {
-                r.encode_single_sep(i, &data_refs[i], &mut parity_refs)
-                    .unwrap();
+            for (i, data_ref) in data_refs.iter().enumerate().take(10) {
+                r.encode_single_sep(i, data_ref, &mut parity_refs).unwrap();
             }
 
             assert_eq!(
                 Error::InvalidIndex,
-                r.encode_single_sep(10, &data_refs[0], &mut parity_refs)
+                r.encode_single_sep(10, data_refs[0], &mut parity_refs)
                     .unwrap_err()
             );
             assert_eq!(
                 Error::InvalidIndex,
-                r.encode_single_sep(11, &data_refs[0], &mut parity_refs)
+                r.encode_single_sep(11, data_refs[0], &mut parity_refs)
                     .unwrap_err()
             );
             assert_eq!(
                 Error::InvalidIndex,
-                r.encode_single_sep(12, &data_refs[0], &mut parity_refs)
+                r.encode_single_sep(12, data_refs[0], &mut parity_refs)
                     .unwrap_err()
             );
             assert_eq!(
                 Error::InvalidIndex,
-                r.encode_single_sep(13, &data_refs[0], &mut parity_refs)
+                r.encode_single_sep(13, data_refs[0], &mut parity_refs)
                     .unwrap_err()
             );
             assert_eq!(
                 Error::InvalidIndex,
-                r.encode_single_sep(14, &data_refs[0], &mut parity_refs)
+                r.encode_single_sep(14, data_refs[0], &mut parity_refs)
                     .unwrap_err()
             );
         }
@@ -2404,7 +2403,7 @@ fn test_encode_single_sep_error_handling() {
 
             assert_eq!(
                 Error::TooFewParityShards,
-                r.encode_single_sep(0, &data_refs[0], &mut parity_refs)
+                r.encode_single_sep(0, data_refs[0], &mut parity_refs)
                     .unwrap_err()
             );
         }
@@ -2416,7 +2415,7 @@ fn test_encode_single_sep_error_handling() {
 
             assert_eq!(
                 Error::TooManyParityShards,
-                r.encode_single_sep(0, &data_refs[0], &mut parity_refs)
+                r.encode_single_sep(0, data_refs[0], &mut parity_refs)
                     .unwrap_err()
             );
         }
