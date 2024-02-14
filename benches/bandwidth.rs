@@ -23,11 +23,7 @@ fn create_shards(block_size: usize, data: usize, parity: usize) -> Shards {
     });
 
     // Create empty parity shards
-    shards.resize_with(data + parity, || {
-        let mut vec = Vec::with_capacity(block_size);
-        vec.resize(block_size, 0);
-        vec
-    });
+    shards.resize_with(data + parity, || vec![0; block_size]);
 
     shards
 }
@@ -189,5 +185,11 @@ fn reconstruct_none(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, encode, reconstruct_one, reconstruct_all, reconstruct_none);
+criterion_group!(
+    benches,
+    encode,
+    reconstruct_one,
+    reconstruct_all,
+    reconstruct_none
+);
 criterion_main!(benches);

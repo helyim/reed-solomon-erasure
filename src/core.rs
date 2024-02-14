@@ -3,6 +3,7 @@ extern crate alloc;
 use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
+use std::num::NonZeroUsize;
 
 use smallvec::SmallVec;
 
@@ -462,7 +463,9 @@ impl<F: Field> ReedSolomon<F> {
             parity_shard_count: parity_shards,
             total_shard_count: total_shards,
             matrix,
-            data_decode_matrix_cache: Mutex::new(LruCache::new(DATA_DECODE_MATRIX_CACHE_CAPACITY)),
+            data_decode_matrix_cache: Mutex::new(LruCache::new(
+                NonZeroUsize::new(DATA_DECODE_MATRIX_CACHE_CAPACITY).unwrap(),
+            )),
         })
     }
 
@@ -484,8 +487,8 @@ impl<F: Field> ReedSolomon<F> {
         inputs: &[T],
         outputs: &mut [U],
     ) {
-        for i_input in 0..self.data_shard_count {
-            self.code_single_slice(matrix_rows, i_input, inputs[i_input].as_ref(), outputs);
+        for (i_input, item) in inputs.iter().enumerate().take(self.data_shard_count) {
+            self.code_single_slice(matrix_rows, i_input, item.as_ref(), outputs);
         }
     }
 

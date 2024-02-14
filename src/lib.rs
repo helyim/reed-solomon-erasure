@@ -8,6 +8,10 @@
 //! and simply leave out the corrupted shards when attempting to reconstruct
 //! the missing data.
 #![allow(dead_code)]
+#![allow(clippy::len_without_is_empty)]
+#![allow(clippy::suspicious_arithmetic_impl)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::wrong_self_convention)]
 #![cfg_attr(not(feature = "std"), no_std)]
 
 #[cfg(test)]
@@ -100,7 +104,7 @@ pub trait Field: Sized {
         assert_eq!(input.len(), out.len());
 
         for (i, o) in input.iter().zip(out) {
-            *o = Self::mul(elem.clone(), i.clone())
+            *o = Self::mul(elem, *i)
         }
     }
 
@@ -113,7 +117,7 @@ pub trait Field: Sized {
         assert_eq!(input.len(), out.len());
 
         for (i, o) in input.iter().zip(out) {
-            *o = Self::add(o.clone(), Self::mul(elem.clone(), i.clone()))
+            *o = Self::add(*o, Self::mul(elem, *i))
         }
     }
 }
